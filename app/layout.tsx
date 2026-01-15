@@ -12,8 +12,8 @@ import BottomLeftQuickPopup from "@/components/bottomleftpopup";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Learn-Z",
-  description: "Modern Learning Platform AI Powered",
+  title: "AEO Workspace",
+  description: "A centralized workspace to optimize, monitor, and dominate AI-driven search results across ChatGPT, Google SGE, Perplexity, and other answer engines.",
 };
 
 export default function RootLayout({
