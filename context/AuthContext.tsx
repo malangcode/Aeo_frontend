@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // 🕒 Start refresh timer before expiry
   const startRefreshTimer = (exp: number) => {
     const now = Math.floor(Date.now() / 1000);
-    const refreshDelay = (exp - now - 60) * 1000;
+    const refreshDelay = ((exp - now) * 0.27) * 1000;
 
     if (refreshDelay <= 0) {
       refreshAccessToken();
