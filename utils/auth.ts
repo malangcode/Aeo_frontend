@@ -10,7 +10,10 @@ export interface UserAuthStatus {
   is_staff: boolean;
   is_superuser: boolean;
   email: string;
-  exp: number; // 👈 new
+  exp: number; // 👈 
+  brand_name: string;
+  domain_name: string;
+  url: string;
   is_brand_created: boolean;
   // photo: string;
 }

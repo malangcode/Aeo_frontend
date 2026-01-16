@@ -1,136 +1,290 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Save, Plus, Trash2, Edit2, Check, X, Building2, Globe, Users, AlertCircle, CheckCircle } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import {
+  Save,
+  Plus,
+  Trash2,
+  Edit2,
+  Check,
+  X,
+  Building2,
+  Globe,
+  Users,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
+import { axiosWithCsrf } from "@/lib/axiosWithCsrf";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "react-toastify";
 
 interface Brand {
-  id: string;
-  name: string;
-  domain: string;
-  isPrimary?: boolean;
+  id: number;
+  brand_name: string;
+  domain_name: string;
+  url: string;
 }
 
 interface Competitor {
-  id: string;
-  name: string;
-  domain: string;
+  id: number;
+  brand_name: string;
+  domain_name: string;
+  url: string;
 }
 
 const AEOSettingsPage = () => {
-  const [brands, setBrands] = useState<Brand[]>([
-    { id: '1', name: 'Your Company', domain: 'yourcompany.com', isPrimary: true }
-  ]);
+  const [brands, setBrands] = useState<Brand[]>([]);
 
-  const [competitors, setCompetitors] = useState<Competitor[]>([
-    { id: '1', name: 'Competitor A', domain: 'competitora.com' },
-    { id: '2', name: 'Competitor B', domain: 'competitorb.com' },
-    { id: '3', name: 'Competitor C', domain: 'competitorc.com' }
-  ]);
+  const { user } = useAuth();
+
+  const [competitors, setCompetitors] = useState<Competitor[]>([]);
+  const [laoding, setLoading] = useState(false);
 
   const [editingBrand, setEditingBrand] = useState<string | null>(null);
-  const [editingCompetitor, setEditingCompetitor] = useState<string | null>(null);
+  const [editingCompetitor, setEditingCompetitor] = useState<string | null>(
+    null
+  );
   const [showAddBrand, setShowAddBrand] = useState(false);
   const [showAddCompetitor, setShowAddCompetitor] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  const [newBrand, setNewBrand] = useState({ name: '', domain: '' });
-  const [newCompetitor, setNewCompetitor] = useState({ name: '', domain: '' });
+  const [newBrand, setNewBrand] = useState({ name: "", domain: "" });
+  const [newCompetitor, setNewCompetitor] = useState({ name: "", domain: "" });
 
-  const [editBrandData, setEditBrandData] = useState({ name: '', domain: '' });
-  const [editCompetitorData, setEditCompetitorData] = useState({ name: '', domain: '' });
+  const [editBrandData, setEditBrandData] = useState({ name: "", domain: "" });
+  const [editCompetitorData, setEditCompetitorData] = useState({
+    name: "",
+    domain: "",
+  });
 
-  const handleAddBrand = () => {
-    if (newBrand.name && newBrand.domain) {
-      const brand: Brand = {
-        id: Date.now().toString(),
-        name: newBrand.name,
-        domain: newBrand.domain,
-        isPrimary: false
-      };
-      setBrands([...brands, brand]);
-      setNewBrand({ name: '', domain: '' });
-      setShowAddBrand(false);
-      showSaveMessage('Brand added successfully!');
+  const getCompetitors = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosWithCsrf.get("/competitors/");
+      setCompetitors(res.data);
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to fetch competitors", error);
     }
   };
 
-  const handleAddCompetitor = () => {
-    if (newCompetitor.name && newCompetitor.domain) {
-      const competitor: Competitor = {
-        id: Date.now().toString(),
-        name: newCompetitor.name,
-        domain: newCompetitor.domain
-      };
-      setCompetitors([...competitors, competitor]);
-      setNewCompetitor({ name: '', domain: '' });
-      setShowAddCompetitor(false);
-      showSaveMessage('Competitor added successfully!');
+  const getSecondaryBrands = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosWithCsrf.get("/secondary-brands/");
+      setBrands(res.data);
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to fetch competitors", error);
     }
   };
 
-  const handleDeleteBrand = (id: string) => {
-    const brand = brands.find(b => b.id === id);
-    if (brand?.isPrimary) {
-      alert('Cannot delete primary brand. Please set another brand as primary first.');
+  useEffect(() => {
+    getCompetitors();
+    getSecondaryBrands();
+  }, []);
+
+  const handleAddBrand = async () => {
+    if (!newBrand.name || !newBrand.domain) return;
+
+    if (!newBrand.domain.includes(".com")){
+      toast.error("Oops! it seems you forgot '.com' in domain ?");
       return;
     }
-    setBrands(brands.filter(b => b.id !== id));
-    showSaveMessage('Brand removed successfully!');
+
+    try {
+      setLoading(true);
+
+      const res = await axiosWithCsrf.post("/secondary-brands/", {
+        brand_name: newBrand.name,
+        domain_name: newBrand.domain,
+        url: `https://${newBrand.domain}`,
+      });
+
+      const savedBrand: Brand = {
+        id: res.data.data.id, // backend ID
+        brand_name: res.data.data.brand_name,
+        domain_name: res.data.data.domain_name,
+        url: res.data.data.url,
+      };
+
+      setBrands((prev) => [...prev, savedBrand]);
+      setLoading(false);
+
+      setNewBrand({ brand_name: "", domain_name: "" });
+      setShowAddBrand(false);
+      toast.success("Brand added successfully!");
+
+    } catch (error) {
+      console.error("Failed to add brand", error);
+      alert("Failed to add brand. Please try again.");
+      setLoading(false);
+    }
   };
 
-  const handleDeleteCompetitor = (id: string) => {
-    setCompetitors(competitors.filter(c => c.id !== id));
-    showSaveMessage('Competitor removed successfully!');
+
+  const handleAddCompetitor = async () => {
+    if (!newCompetitor.name || !newCompetitor.domain) return;
+
+    if (!newCompetitor.domain.includes(".com")){
+      toast.error("Oops! it seems you forgot '.com' in domain ?");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await axiosWithCsrf.post("/competitors/", {
+        brand_name: newCompetitor.name,
+        domain_name: newCompetitor.domain,
+        url: `https://${newCompetitor.domain}`,
+      });
+
+      const savedCompetitor: Competitor = {
+        id: res.data.data.id, // backend ID
+        brand_name: res.data.data.brand_name,
+        domain_name: res.data.data.domain_name,
+        url: res.data.data.url,
+      };
+
+      setCompetitors((prev) => [...prev, savedCompetitor]);
+      setLoading(false);
+
+      setNewCompetitor({ brand_name: "", domain_name: "" });
+      setShowAddCompetitor(false);
+      toast.success("Competitor added successfully!")
+    } catch (error) {
+      console.error("Failed to add competitor", error);
+      alert("Failed to add competitor. Please try again.");
+    }
+  };
+
+
+  const handleDeleteBrand = async (id: number) => {
+    const brand = brands.find((b) => b.id === id);
+
+    if (!brand) return;
+
+    try {
+      setLoading(true);
+
+      // Call backend to delete the secondary brand
+      await axiosWithCsrf.delete(`/secondary-brands/${id}/`);
+
+      // Remove from frontend state only after success
+      setBrands(brands.filter((b) => b.id !== id));
+
+      setLoading(false);
+      toast.success("Brand removed successfully!")
+    } catch (error) {
+      console.error("Failed to delete brand", error);
+      alert("Failed to delete brand. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteCompetitor = async (id: number) => {
+    try {
+      setLoading(true);
+      await axiosWithCsrf.delete(`/competitors/${id}/`);
+      setCompetitors(competitors.filter((c) => c.id !== id));
+      setLoading(false);
+      toast.success("Competitor removed successfully!")
+    } catch (error) {
+      console.error("Failed to delete competitor", error);
+      alert("Failed to delete competitor. Please try again.");
+    }
   };
 
   const startEditBrand = (brand: Brand) => {
     setEditingBrand(brand.id);
-    setEditBrandData({ name: brand.name, domain: brand.domain });
+    setEditBrandData({ name: brand.brand_name, domain: brand.domain_name });
   };
 
   const startEditCompetitor = (competitor: Competitor) => {
     setEditingCompetitor(competitor.id);
-    setEditCompetitorData({ name: competitor.name, domain: competitor.domain });
+    setEditCompetitorData({
+      name: competitor.brand_name,
+      domain: competitor.domain_name,
+    });
   };
 
-  const saveEditBrand = (id: string) => {
-    setBrands(brands.map(b => 
-      b.id === id ? { ...b, name: editBrandData.name, domain: editBrandData.domain } : b
-    ));
-    setEditingBrand(null);
-    showSaveMessage('Brand updated successfully!');
+  const saveEditBrand = async (id: number) => {
+    if (!editBrandData.domain.includes(".com")){
+      toast.error("Oops! it seems you forgot '.com' in domain ?");
+      return;
+    }
+    try {
+      setLoading(true);
+
+      const res = await axiosWithCsrf.put(`/secondary-brands/${id}/`, {
+        brand_name: editBrandData.name,
+        domain_name: editBrandData.domain,
+        url: `https://${editBrandData.domain}`,
+      });
+
+      const updatedBrand: Brand = {
+        id: res.data.id,
+        brand_name: res.data.brand_name,
+        domain_name: res.data.domain_name,
+        url: res.data.url,
+      };
+
+      setBrands(brands.map((b) => (b.id === id ? updatedBrand : b)));
+
+      setEditingBrand(null);
+      setLoading(false);
+      toast.success("Brand updated successfully!");
+    } catch (error) {
+      console.error("Failed to update brand", error);
+      alert("Failed to update brand. Please try again.");
+      setLoading(false);
+    }
   };
 
-  const saveEditCompetitor = (id: string) => {
-    setCompetitors(competitors.map(c => 
-      c.id === id ? { ...c, name: editCompetitorData.name, domain: editCompetitorData.domain } : c
-    ));
-    setEditingCompetitor(null);
-    showSaveMessage('Competitor updated successfully!');
+  const saveEditCompetitor = async (id: number) => {
+    if (!editCompetitorData.domain.includes(".com")){
+      toast.error("Oops! it seems you forgot '.com' in domain ?");
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await axiosWithCsrf.put(`/competitors/${id}/`, {
+        brand_name: editCompetitorData.name,
+        domain_name: editCompetitorData.domain,
+        url: `https://${editCompetitorData.domain}`,
+      });
+
+      const updatedCompetitor: Competitor = {
+        id: res.data.data.id,
+
+        brand_name: res.data.data.brand_name,
+
+        domain_name: res.data.data.domain_name,
+
+        url: res.data.data.url,
+      };
+
+      setCompetitors(
+        competitors.map((c) => (c.id === id ? updatedCompetitor : c))
+      );
+      setEditingCompetitor(null);
+      setLoading(false);
+      toast.success("Competitor updated successfully!");
+    } catch (error) {
+      console.error("Failed to update competitor", error);
+      alert("Failed to update competitor. Please try again.");
+    }
   };
 
   const cancelEditBrand = () => {
     setEditingBrand(null);
-    setEditBrandData({ name: '', domain: '' });
+    setEditBrandData({ name: "", domain: "" });
   };
 
   const cancelEditCompetitor = () => {
     setEditingCompetitor(null);
-    setEditCompetitorData({ name: '', domain: '' });
+    setEditCompetitorData({ name: "", domain: "" });
   };
 
-  const setPrimaryBrand = (id: string) => {
-    setBrands(brands.map(b => ({
-      ...b,
-      isPrimary: b.id === id
-    })));
-    showSaveMessage('Primary brand updated!');
-  };
-
-  const showSaveMessage = (message: string) => {
-    setSaveMessage(message);
-    setTimeout(() => setSaveMessage(null), 3000);
-  };
 
   return (
     <div className="min-h-screen overflow-hidden">
@@ -148,23 +302,19 @@ const AEOSettingsPage = () => {
             <h1 className="text-5xl sm:text-6xl font-black bg-gradient-to-tr from-indigo-500 via-violet-500 to-sky-500 bg-clip-text text-transparent mb-2">
               Settings
             </h1>
-            <p className="text-xl text-zinc-600">Manage your brands and competitors</p>
+            <p className="text-xl text-zinc-600">
+              Manage your brands and competitors
+            </p>
           </div>
-
-          {/* Save Message */}
-          {saveMessage && (
-            <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4 flex items-center animate-fade-in">
-              <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
-              <span className="text-green-800 font-medium">{saveMessage}</span>
-            </div>
-          )}
 
           {/* Brands Section */}
           <div className="bg-white/60 backdrop-blur-xl rounded-2xl p-8 mb-6 border border-white/30 shadow-lg">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <Building2 className="w-6 h-6 text-indigo-500 mr-3" />
-                <h2 className="text-2xl font-bold text-zinc-800">Your Brands</h2>
+                <h2 className="text-2xl font-bold text-zinc-800">
+                  Your Brands
+                </h2>
               </div>
               <button
                 onClick={() => setShowAddBrand(true)}
@@ -178,24 +328,34 @@ const AEOSettingsPage = () => {
             {/* Add Brand Form */}
             {showAddBrand && (
               <div className="bg-white/40 backdrop-blur-sm rounded-xl p-6 mb-4 border border-white/40">
-                <h3 className="text-lg font-semibold text-zinc-800 mb-4">Add New Brand</h3>
+                <h3 className="text-lg font-semibold text-zinc-800 mb-4">
+                  Add New Brand
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label className="block text-zinc-700 font-medium mb-2">Brand Name</label>
+                    <label className="block text-zinc-700 font-medium mb-2">
+                      Brand Name
+                    </label>
                     <input
                       type="text"
                       value={newBrand.name}
-                      onChange={(e) => setNewBrand({...newBrand, name: e.target.value})}
+                      onChange={(e) =>
+                        setNewBrand({ ...newBrand, name: e.target.value })
+                      }
                       placeholder="e.g., Acme Corporation"
                       className="w-full bg-white/50 text-zinc-900 rounded-xl p-3 border border-zinc-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                     />
                   </div>
                   <div>
-                    <label className="block text-zinc-700 font-medium mb-2">Domain</label>
+                    <label className="block text-zinc-700 font-medium mb-2">
+                      Domain Name
+                    </label>
                     <input
                       type="text"
                       value={newBrand.domain}
-                      onChange={(e) => setNewBrand({...newBrand, domain: e.target.value})}
+                      onChange={(e) =>
+                        setNewBrand({ ...newBrand, domain: e.target.value })
+                      }
                       placeholder="e.g., acmecorp.com"
                       className="w-full bg-white/50 text-zinc-900 rounded-xl p-3 border border-zinc-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                     />
@@ -212,7 +372,7 @@ const AEOSettingsPage = () => {
                   <button
                     onClick={() => {
                       setShowAddBrand(false);
-                      setNewBrand({ name: '', domain: '' });
+                      setNewBrand({ name: "", domain: "" });
                     }}
                     className="px-6 py-2 bg-zinc-200 text-zinc-700 rounded-xl font-medium hover:bg-zinc-300 transition flex items-center"
                   >
@@ -224,7 +384,31 @@ const AEOSettingsPage = () => {
 
             {/* Brands List */}
             <div className="space-y-3">
-              {brands.map(brand => (
+              <div className="bg-white/40 backdrop-blur-sm rounded-xl p-5 border border-white/40 hover:shadow-md transition">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-lg font-bold text-zinc-900">
+                        {user?.brand_name}
+                      </h3>
+
+                      <span className="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-full">
+                        Primary
+                      </span>
+                    </div>
+                    <div className="flex items-center text-zinc-600 mt-1">
+                      <Globe className="w-4 h-4 mr-2" />
+                      <span className="text-sm">{user?.domain_name}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 pl-5 pr-5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition">
+                      Fixed !
+                    </span>
+                  </div>
+                </div>
+              </div>
+              {brands.map((brand) => (
                 <div
                   key={brand.id}
                   className="bg-white/40 backdrop-blur-sm rounded-xl p-5 border border-white/40 hover:shadow-md transition"
@@ -235,7 +419,12 @@ const AEOSettingsPage = () => {
                         <input
                           type="text"
                           value={editBrandData.name}
-                          onChange={(e) => setEditBrandData({...editBrandData, name: e.target.value})}
+                          onChange={(e) =>
+                            setEditBrandData({
+                              ...editBrandData,
+                              name: e.target.value,
+                            })
+                          }
                           className="w-full bg-white/50 text-zinc-900 rounded-lg p-3 border border-zinc-300 focus:border-indigo-500 focus:outline-none"
                         />
                       </div>
@@ -243,7 +432,12 @@ const AEOSettingsPage = () => {
                         <input
                           type="text"
                           value={editBrandData.domain}
-                          onChange={(e) => setEditBrandData({...editBrandData, domain: e.target.value})}
+                          onChange={(e) =>
+                            setEditBrandData({
+                              ...editBrandData,
+                              domain: e.target.value,
+                            })
+                          }
                           className="flex-1 bg-white/50 text-zinc-900 rounded-lg p-3 border border-zinc-300 focus:border-indigo-500 focus:outline-none"
                         />
                         <button
@@ -264,27 +458,20 @@ const AEOSettingsPage = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
-                          <h3 className="text-lg font-bold text-zinc-900">{brand.name}</h3>
-                          {brand.isPrimary && (
-                            <span className="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-full">
-                              Primary
-                            </span>
-                          )}
+                          <h3 className="text-lg font-bold text-zinc-900">
+                            {brand.brand_name}
+                          </h3>
+
+                          <span className="px-3 py-1 bg-gray-100 text-yellow-700 text-xs font-semibold rounded-full">
+                            Secondary
+                          </span>
                         </div>
                         <div className="flex items-center text-zinc-600 mt-1">
                           <Globe className="w-4 h-4 mr-2" />
-                          <span className="text-sm">{brand.domain}</span>
+                          <span className="text-sm">{brand.domain_name}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {!brand.isPrimary && (
-                          <button
-                            onClick={() => setPrimaryBrand(brand.id)}
-                            className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition text-sm font-medium"
-                          >
-                            Set as Primary
-                          </button>
-                        )}
                         <button
                           onClick={() => startEditBrand(brand)}
                           className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition"
@@ -294,7 +481,6 @@ const AEOSettingsPage = () => {
                         <button
                           onClick={() => handleDeleteBrand(brand.id)}
                           className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition"
-                          disabled={brand.isPrimary}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -308,7 +494,9 @@ const AEOSettingsPage = () => {
             <div className="mt-4 bg-indigo-50 rounded-xl p-4 flex items-start">
               <AlertCircle className="w-5 h-5 text-indigo-500 mr-3 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-indigo-700">
-                Your primary brand is the main brand monitored across all AI platforms. You can add multiple brands to track different products or subsidiaries.
+                Your primary brand is the main brand monitored across all AI
+                platforms. You can add multiple brands to track different
+                products or subsidiaries.
               </p>
             </div>
           </div>
@@ -318,7 +506,9 @@ const AEOSettingsPage = () => {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <Users className="w-6 h-6 text-violet-500 mr-3" />
-                <h2 className="text-2xl font-bold text-zinc-800">Competitors</h2>
+                <h2 className="text-2xl font-bold text-zinc-800">
+                  Competitors
+                </h2>
               </div>
               <button
                 onClick={() => setShowAddCompetitor(true)}
@@ -332,24 +522,40 @@ const AEOSettingsPage = () => {
             {/* Add Competitor Form */}
             {showAddCompetitor && (
               <div className="bg-white/40 backdrop-blur-sm rounded-xl p-6 mb-4 border border-white/40">
-                <h3 className="text-lg font-semibold text-zinc-800 mb-4">Add New Competitor</h3>
+                <h3 className="text-lg font-semibold text-zinc-800 mb-4">
+                  Add New Competitor
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label className="block text-zinc-700 font-medium mb-2">Competitor Name</label>
+                    <label className="block text-zinc-700 font-medium mb-2">
+                      Brand Name
+                    </label>
                     <input
                       type="text"
                       value={newCompetitor.name}
-                      onChange={(e) => setNewCompetitor({...newCompetitor, name: e.target.value})}
+                      onChange={(e) =>
+                        setNewCompetitor({
+                          ...newCompetitor,
+                          name: e.target.value,
+                        })
+                      }
                       placeholder="e.g., Competitor Inc."
                       className="w-full bg-white/50 text-zinc-900 rounded-xl p-3 border border-zinc-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                     />
                   </div>
                   <div>
-                    <label className="block text-zinc-700 font-medium mb-2">Domain</label>
+                    <label className="block text-zinc-700 font-medium mb-2">
+                      Domain Name
+                    </label>
                     <input
                       type="text"
                       value={newCompetitor.domain}
-                      onChange={(e) => setNewCompetitor({...newCompetitor, domain: e.target.value})}
+                      onChange={(e) =>
+                        setNewCompetitor({
+                          ...newCompetitor,
+                          domain: e.target.value,
+                        })
+                      }
                       placeholder="e.g., competitor.com"
                       className="w-full bg-white/50 text-zinc-900 rounded-xl p-3 border border-zinc-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                     />
@@ -361,12 +567,13 @@ const AEOSettingsPage = () => {
                     disabled={!newCompetitor.name || !newCompetitor.domain}
                     className="px-6 py-2 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                   >
-                    <Check className="w-4 h-4 mr-2" /> Add
+                    <Check className="w-4 h-4 mr-2" />{" "}
+                    {laoding ? "adding..." : "Add"}
                   </button>
                   <button
                     onClick={() => {
                       setShowAddCompetitor(false);
-                      setNewCompetitor({ name: '', domain: '' });
+                      setNewCompetitor({ name: "", domain: "" });
                     }}
                     className="px-6 py-2 bg-zinc-200 text-zinc-700 rounded-xl font-medium hover:bg-zinc-300 transition flex items-center"
                   >
@@ -378,7 +585,7 @@ const AEOSettingsPage = () => {
 
             {/* Competitors List */}
             <div className="space-y-3">
-              {competitors.map(competitor => (
+              {competitors.map((competitor) => (
                 <div
                   key={competitor.id}
                   className="bg-white/40 backdrop-blur-sm rounded-xl p-5 border border-white/40 hover:shadow-md transition"
@@ -389,7 +596,12 @@ const AEOSettingsPage = () => {
                         <input
                           type="text"
                           value={editCompetitorData.name}
-                          onChange={(e) => setEditCompetitorData({...editCompetitorData, name: e.target.value})}
+                          onChange={(e) =>
+                            setEditCompetitorData({
+                              ...editCompetitorData,
+                              name: e.target.value,
+                            })
+                          }
                           className="w-full bg-white/50 text-zinc-900 rounded-lg p-3 border border-zinc-300 focus:border-indigo-500 focus:outline-none"
                         />
                       </div>
@@ -397,7 +609,12 @@ const AEOSettingsPage = () => {
                         <input
                           type="text"
                           value={editCompetitorData.domain}
-                          onChange={(e) => setEditCompetitorData({...editCompetitorData, domain: e.target.value})}
+                          onChange={(e) =>
+                            setEditCompetitorData({
+                              ...editCompetitorData,
+                              domain: e.target.value,
+                            })
+                          }
                           className="flex-1 bg-white/50 text-zinc-900 rounded-lg p-3 border border-zinc-300 focus:border-indigo-500 focus:outline-none"
                         />
                         <button
@@ -417,10 +634,14 @@ const AEOSettingsPage = () => {
                   ) : (
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <h3 className="text-lg font-bold text-zinc-900">{competitor.name}</h3>
+                        <h3 className="text-lg font-bold text-zinc-900">
+                          {competitor.brand_name}
+                        </h3>
                         <div className="flex items-center text-zinc-600 mt-1">
                           <Globe className="w-4 h-4 mr-2" />
-                          <span className="text-sm">{competitor.domain}</span>
+                          <span className="text-sm">
+                            {competitor.domain_name}
+                          </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -446,20 +667,11 @@ const AEOSettingsPage = () => {
             <div className="mt-4 bg-violet-50 rounded-xl p-4 flex items-start">
               <AlertCircle className="w-5 h-5 text-violet-500 mr-3 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-violet-700">
-                Track up to 10 competitors to monitor their presence in AI-generated answers. Competitor data is used for benchmarking and identifying opportunities.
+                Track up to 10 competitors to monitor their presence in
+                AI-generated answers. Competitor data is used for benchmarking
+                and identifying opportunities.
               </p>
             </div>
-          </div>
-
-          {/* Save All Button */}
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={() => showSaveMessage('All settings saved successfully!')}
-              className="px-10 py-4 bg-gradient-to-tr from-indigo-500 via-violet-500 to-sky-500 rounded-xl text-white font-bold text-lg shadow-xl hover:scale-105 transition flex items-center"
-            >
-              <Save className="w-5 h-5 mr-2" />
-              Save All Changes
-            </button>
           </div>
         </div>
       </div>
