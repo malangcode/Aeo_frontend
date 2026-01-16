@@ -40,8 +40,8 @@ const AEOSettingsPage = () => {
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [laoding, setLoading] = useState(false);
 
-  const [editingBrand, setEditingBrand] = useState<string | null>(null);
-  const [editingCompetitor, setEditingCompetitor] = useState<string | null>(
+  const [editingBrand, setEditingBrand] = useState<number | null>(null);
+  const [editingCompetitor, setEditingCompetitor] = useState<number | null>(
     null
   );
   const [showAddBrand, setShowAddBrand] = useState(false);
@@ -110,7 +110,7 @@ const AEOSettingsPage = () => {
       setBrands((prev) => [...prev, savedBrand]);
       setLoading(false);
 
-      setNewBrand({ brand_name: "", domain_name: "" });
+      setNewBrand({ name: "", domain: "" });
       setShowAddBrand(false);
       toast.success("Brand added successfully!");
 
@@ -148,7 +148,7 @@ const AEOSettingsPage = () => {
       setCompetitors((prev) => [...prev, savedCompetitor]);
       setLoading(false);
 
-      setNewCompetitor({ brand_name: "", domain_name: "" });
+      setNewCompetitor({ name: "", domain: "" });
       setShowAddCompetitor(false);
       toast.success("Competitor added successfully!")
     } catch (error) {
