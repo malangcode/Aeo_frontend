@@ -13,6 +13,7 @@ import {
   Users,
   AlertCircle,
   CheckCircle,
+  Loader2,
 } from "lucide-react";
 import { axiosWithCsrf } from "@/lib/axiosWithCsrf";
 import { useAuth } from "@/context/AuthContext";
@@ -38,7 +39,7 @@ const AEOSettingsPage = () => {
   const { user } = useAuth();
 
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
-  const [laoding, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [editingBrand, setEditingBrand] = useState<number | null>(null);
   const [editingCompetitor, setEditingCompetitor] = useState<number | null>(
@@ -86,7 +87,7 @@ const AEOSettingsPage = () => {
   const handleAddBrand = async () => {
     if (!newBrand.name || !newBrand.domain) return;
 
-    if (!newBrand.domain.includes(".com")){
+    if (!newBrand.domain.includes(".com")) {
       toast.error("Oops! it seems you forgot '.com' in domain ?");
       return;
     }
@@ -113,7 +114,6 @@ const AEOSettingsPage = () => {
       setNewBrand({ name: "", domain: "" });
       setShowAddBrand(false);
       toast.success("Brand added successfully!");
-
     } catch (error) {
       console.error("Failed to add brand", error);
       alert("Failed to add brand. Please try again.");
@@ -121,11 +121,10 @@ const AEOSettingsPage = () => {
     }
   };
 
-
   const handleAddCompetitor = async () => {
     if (!newCompetitor.name || !newCompetitor.domain) return;
 
-    if (!newCompetitor.domain.includes(".com")){
+    if (!newCompetitor.domain.includes(".com")) {
       toast.error("Oops! it seems you forgot '.com' in domain ?");
       return;
     }
@@ -150,13 +149,12 @@ const AEOSettingsPage = () => {
 
       setNewCompetitor({ name: "", domain: "" });
       setShowAddCompetitor(false);
-      toast.success("Competitor added successfully!")
+      toast.success("Competitor added successfully!");
     } catch (error) {
       console.error("Failed to add competitor", error);
       alert("Failed to add competitor. Please try again.");
     }
   };
-
 
   const handleDeleteBrand = async (id: number) => {
     const brand = brands.find((b) => b.id === id);
@@ -173,7 +171,7 @@ const AEOSettingsPage = () => {
       setBrands(brands.filter((b) => b.id !== id));
 
       setLoading(false);
-      toast.success("Brand removed successfully!")
+      toast.success("Brand removed successfully!");
     } catch (error) {
       console.error("Failed to delete brand", error);
       alert("Failed to delete brand. Please try again.");
@@ -187,7 +185,7 @@ const AEOSettingsPage = () => {
       await axiosWithCsrf.delete(`/competitors/${id}/`);
       setCompetitors(competitors.filter((c) => c.id !== id));
       setLoading(false);
-      toast.success("Competitor removed successfully!")
+      toast.success("Competitor removed successfully!");
     } catch (error) {
       console.error("Failed to delete competitor", error);
       alert("Failed to delete competitor. Please try again.");
@@ -208,7 +206,7 @@ const AEOSettingsPage = () => {
   };
 
   const saveEditBrand = async (id: number) => {
-    if (!editBrandData.domain.includes(".com")){
+    if (!editBrandData.domain.includes(".com")) {
       toast.error("Oops! it seems you forgot '.com' in domain ?");
       return;
     }
@@ -241,7 +239,7 @@ const AEOSettingsPage = () => {
   };
 
   const saveEditCompetitor = async (id: number) => {
-    if (!editCompetitorData.domain.includes(".com")){
+    if (!editCompetitorData.domain.includes(".com")) {
       toast.error("Oops! it seems you forgot '.com' in domain ?");
       return;
     }
@@ -284,7 +282,6 @@ const AEOSettingsPage = () => {
     setEditingCompetitor(null);
     setEditCompetitorData({ name: "", domain: "" });
   };
-
 
   return (
     <div className="min-h-screen overflow-hidden">
@@ -364,10 +361,15 @@ const AEOSettingsPage = () => {
                 <div className="flex gap-3">
                   <button
                     onClick={handleAddBrand}
-                    disabled={!newBrand.name || !newBrand.domain}
+                    disabled={!newBrand.name || !newBrand.domain || loading}
                     className="px-6 py-2 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                   >
-                    <Check className="w-4 h-4 mr-2" /> Add
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}{" "}
+                    {loading ? "Adding" : "Add"}
                   </button>
                   <button
                     onClick={() => {
@@ -441,10 +443,15 @@ const AEOSettingsPage = () => {
                           className="flex-1 bg-white/50 text-zinc-900 rounded-lg p-3 border border-zinc-300 focus:border-indigo-500 focus:outline-none"
                         />
                         <button
+                          disabled={loading}
                           onClick={() => saveEditBrand(brand.id)}
                           className="p-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
                         >
-                          <Check className="w-4 h-4" />
+                          {loading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Check className="w-4 h-4" />
+                          )}
                         </button>
                         <button
                           onClick={cancelEditBrand}
@@ -564,11 +571,17 @@ const AEOSettingsPage = () => {
                 <div className="flex gap-3">
                   <button
                     onClick={handleAddCompetitor}
-                    disabled={!newCompetitor.name || !newCompetitor.domain}
+                    disabled={
+                      !newCompetitor.name || !newCompetitor.domain || loading
+                    }
                     className="px-6 py-2 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                   >
-                    <Check className="w-4 h-4 mr-2" />{" "}
-                    {laoding ? "adding..." : "Add"}
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}{" "}
+                    {loading ? "adding..." : "Add"}
                   </button>
                   <button
                     onClick={() => {
@@ -618,10 +631,15 @@ const AEOSettingsPage = () => {
                           className="flex-1 bg-white/50 text-zinc-900 rounded-lg p-3 border border-zinc-300 focus:border-indigo-500 focus:outline-none"
                         />
                         <button
+                          disabled={loading}
                           onClick={() => saveEditCompetitor(competitor.id)}
                           className="p-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
                         >
-                          <Check className="w-4 h-4" />
+                          {loading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Check className="w-4 h-4" />
+                          )}
                         </button>
                         <button
                           onClick={cancelEditCompetitor}
