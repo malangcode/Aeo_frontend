@@ -24,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} bg-gray-50 text-gray-900`}>
-        <GoogleOAuthProvider clientId="252727771176-r3e94dru2j4sr0p7j9ltjp8gar31i5ha.apps.googleusercontent.com">
+        <GoogleOAuthProvider clientId="431480469109-8ba8255c770redqcimhidb9rd2c7nbff.apps.googleusercontent.com">
           <AuthProvider>
             <ToastContainer /> {/* toast alert  */}
             <AnimatedBg />
