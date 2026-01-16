@@ -7,7 +7,6 @@ import StepNavigation from "./components/StepNavigation";
 import BasicInfoStep from "./components/steps/BasicInfoStep";
 import NoticeStep1 from "./components/steps/Noticestep1";
 import { toast } from "react-toastify";
-import { useRouter } from "next/navigation";
 
 export interface Profile {
   brand_name: string;
@@ -19,7 +18,6 @@ export default function CompletePersonalInfoPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const router = useRouter();
 
   const totalSteps = 2;
 
@@ -64,7 +62,7 @@ export default function CompletePersonalInfoPage() {
   };
 
   if (completed){
-      router.push("/settings");
+      location.href = "/settings";
   };
 
   return (
