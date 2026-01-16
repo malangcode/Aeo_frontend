@@ -5,33 +5,28 @@ import { axiosWithCsrf } from "@/lib/axiosWithCsrf";
 import StepHeader from "./components/StepHeader";
 import StepNavigation from "./components/StepNavigation";
 import BasicInfoStep from "./components/steps/BasicInfoStep";
-import CompletionScreen from "./components/CompletionScreen";
-import Competitor1InfoStep from "./components/steps/CompetetorInfo1";
-import Competitor2InfoStep from "./components/steps/CompetetorInfo2";
+import NoticeStep1 from "./components/steps/Noticestep1";
+import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
 
 export interface Profile {
   brand_name: string;
   domain_name: string;
-  competitor1_brand_name: string;
-  competitor1_domain_name: string;
-  competitor2_brand_name: string;
-  competitor2_domain_name: string;
+  url: string;
 }
 
 export default function CompletePersonalInfoPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const router = useRouter();
 
-  const totalSteps = 3;
+  const totalSteps = 2;
 
   const [profile, setProfile] = useState<Profile>({
     brand_name: "",
     domain_name: "",
-    competitor1_brand_name: "",
-    competitor1_domain_name: "",
-    competitor2_brand_name: "",
-    competitor2_domain_name: "",
+    url: "",
   });
 
   const isStepValid = () => {
@@ -39,8 +34,7 @@ export default function CompletePersonalInfoPage() {
       return (
         profile.brand_name.trim() !== "" && profile.domain_name.trim() !== ""
       );
-    if (step === 2) return ( profile.competitor1_brand_name.trim() !== ""  && profile.competitor1_domain_name.trim() !== "" );
-    if (step === 3) return ( profile.competitor2_brand_name.trim() !== ""  && profile.competitor2_domain_name.trim() !== "" );
+    if (step === 2) return true;
     
     return true;
   };
@@ -56,15 +50,22 @@ export default function CompletePersonalInfoPage() {
     });
 
     try {
-      await axiosWithCsrf.put("/brand-profile/create/", formData);
-      localStorage.setItem("profile_completed", "true");
+      const res = await axiosWithCsrf.put("/brand-profile/create/", formData);
       setCompleted(true);
+      toast.success("Primary Brand Updated!")
+
+    }
+    catch (error){
+      console.error("Failed to update brand profile", error)
+      alert("failed to update the brand!")
     } finally {
       setLoading(false);
     }
   };
 
-  if (completed) return <CompletionScreen />;
+  if (completed){
+      router.push("/settings");
+  };
 
   return (
     <div className="min-h-screen flex justify-center items-center p-4">
@@ -76,10 +77,7 @@ export default function CompletePersonalInfoPage() {
             <BasicInfoStep profile={profile} setProfile={setProfile} />
           )}
           {step === 2 && (
-            <Competitor1InfoStep profile={profile} setProfile={setProfile} />
-          )}
-          {step === 3 && (
-            <Competitor2InfoStep profile={profile} setProfile={setProfile} />
+            <NoticeStep1 />
           )}
 
           <StepNavigation

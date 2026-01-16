@@ -1,5 +1,5 @@
 import { Camera } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Profile } from "../../page";
 
 export default function BasicInfoStep({
@@ -20,6 +20,11 @@ export default function BasicInfoStep({
     }
   };
 
+  useEffect(() => {
+    // Update URL whenever domain_name changes
+    setProfile((p:any) => ({ ...p, url: `https://${p.domain_name}` }));
+  }, [profile.domain_name]);
+
   return (
     <>
       {/* <div className="flex justify-center mb-6">
@@ -37,7 +42,6 @@ export default function BasicInfoStep({
       </div> */}
 
       <div className="space-y-6">
-
         <h2 className="text-xl font-semibold text-center">
           Your Brand Information
         </h2>
@@ -58,6 +62,14 @@ export default function BasicInfoStep({
           }
           className="w-full p-4 border shadow border-gray-300 rounded-2xl focus:ring-2 focus:ring-indigo-400 focus:outline-none focus:border-transparent transition-all"
         />
+        <div className="flex flex-col gap-2">
+          <label>Your site Auto generated URL *</label>
+          <input
+            readOnly
+            value={profile.url || ""}
+            className="w-full p-4 border shadow border-gray-300 rounded-2xl focus:ring-2 focus:ring-indigo-400 focus:outline-none focus:border-transparent transition-all"
+          />
+        </div>
       </div>
     </>
   );
