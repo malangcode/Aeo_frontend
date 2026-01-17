@@ -28,21 +28,10 @@ export default function CompletePersonalInfoPage() {
   });
 
   const isStepValid = () => {
-    if (step === 1) {
-      if (
-        profile.domain_name.trim() !== "" &&
-        !profile.domain_name.includes(".com")
-      ) {
-        toast.error("Oops! it seems you forgot '.com' in domain ?");
-      }
-
+    if (step === 1)
       return (
-        profile.brand_name.trim() !== "" &&
-        profile.domain_name.trim() !== "" &&
-        profile.domain_name.includes(".com")
+        true
       );
-    }
-
     if (step === 2) return true;
 
     return true;
@@ -90,7 +79,27 @@ export default function CompletePersonalInfoPage() {
             totalSteps={totalSteps}
             isStepValid={isStepValid()}
             loading={loading}
-            onNext={() => setStep(step + 1)}
+            onNext={() => {
+              if (step === 1) {
+                if (
+                  profile.domain_name.trim() !== "" &&
+                  !profile.domain_name.includes(".com")
+                ) {
+                  toast.error("Oops! it seems you forgot '.com' in domain ?");
+                  return;
+                }
+
+                if (
+                  profile.brand_name.trim() === "" ||
+                  profile.domain_name.trim() === ""
+                ) {
+                  toast.error("Please fill all required fields");
+                  return;
+                }
+              }
+
+              setStep(step + 1);
+            }}
             onPrev={() => setStep(step - 1)}
             onSubmit={submitProfile}
           />
