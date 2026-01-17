@@ -28,10 +28,7 @@ export default function CompletePersonalInfoPage() {
   });
 
   const isStepValid = () => {
-    if (step === 1)
-      return (
-        true
-      );
+    if (step === 1) return true;
     if (step === 2) return true;
 
     return true;
@@ -81,6 +78,15 @@ export default function CompletePersonalInfoPage() {
             loading={loading}
             onNext={() => {
               if (step === 1) {
+                if (
+                  profile.domain_name.toLowerCase().includes("https://") ||
+                  profile.domain_name.toLowerCase().includes("http://")
+                ) {
+                  toast.error(
+                    "Oops! It seems you entered Link in domain field",
+                  );
+                  return;
+                }
                 if (
                   profile.domain_name.trim() !== "" &&
                   !profile.domain_name.includes(".com")
