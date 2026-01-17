@@ -28,12 +28,23 @@ export default function CompletePersonalInfoPage() {
   });
 
   const isStepValid = () => {
-    if (step === 1)
+    if (step === 1) {
+      if (
+        profile.domain_name.trim() !== "" &&
+        !profile.domain_name.includes(".com")
+      ) {
+        toast.error("Oops! it seems you forgot '.com' in domain ?");
+      }
+
       return (
-        profile.brand_name.trim() !== "" && profile.domain_name.trim() !== ""
+        profile.brand_name.trim() !== "" &&
+        profile.domain_name.trim() !== "" &&
+        profile.domain_name.includes(".com")
       );
+    }
+
     if (step === 2) return true;
-    
+
     return true;
   };
 
@@ -50,20 +61,18 @@ export default function CompletePersonalInfoPage() {
     try {
       const res = await axiosWithCsrf.put("/brand-profile/create/", formData);
       setCompleted(true);
-      toast.success("Primary Brand Updated!")
-
-    }
-    catch (error){
-      console.error("Failed to update brand profile", error)
-      alert("failed to update the brand!")
+      toast.success("Primary Brand Updated!");
+    } catch (error) {
+      console.error("Failed to update brand profile", error);
+      alert("failed to update the brand!");
     } finally {
       setLoading(false);
     }
   };
 
-  if (completed){
-      location.href = "/settings";
-  };
+  if (completed) {
+    location.href = "/settings";
+  }
 
   return (
     <div className="min-h-screen flex justify-center items-center p-4">
@@ -74,9 +83,7 @@ export default function CompletePersonalInfoPage() {
           {step === 1 && (
             <BasicInfoStep profile={profile} setProfile={setProfile} />
           )}
-          {step === 2 && (
-            <NoticeStep1 />
-          )}
+          {step === 2 && <NoticeStep1 />}
 
           <StepNavigation
             step={step}

@@ -1,6 +1,7 @@
-import { Camera } from "lucide-react";
+
 import { useEffect, useRef, useState } from "react";
 import { Profile } from "../../page";
+
 
 export default function BasicInfoStep({
   profile,
@@ -9,16 +10,7 @@ export default function BasicInfoStep({
   profile: Profile;
   setProfile: any;
 }) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-
-  const handlePhoto = (e: any) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setProfile((p: Profile) => ({ ...p, photo: file }));
-      setPreview(URL.createObjectURL(file));
-    }
-  };
+ 
 
   useEffect(() => {
     // Update URL whenever domain_name changes
@@ -55,7 +47,7 @@ export default function BasicInfoStep({
           className="w-full p-4 border shadow border-gray-300 rounded-2xl focus:ring-2 focus:ring-indigo-400 focus:outline-none focus:border-transparent transition-all"
         />
         <input
-          placeholder="Domain Name * : eg. https://xyz.com"
+          placeholder="Domain Name * : eg. xyz.com"
           value={profile.domain_name}
           onChange={(e) =>
             setProfile({ ...profile, domain_name: e.target.value })
