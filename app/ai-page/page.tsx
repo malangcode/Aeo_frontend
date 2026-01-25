@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, use } from "react";
 import {
   Share,
   Download,
@@ -22,8 +22,12 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import {useRouter} from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { axiosWithCsrf } from "@/lib/axiosWithCsrf";
+import LineChartComponent from "./components/LineChartComponent";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 // Types
 interface Message {
@@ -66,59 +70,63 @@ const AEOWorkspace: React.FC = () => {
   ]);
 
   // Prompt history with brand mentions
-  const [promptHistory] = useState<PromptHistory[]>([
-    {
-      id: 1,
-      prompt: "Best project management tools for startups",
-      date: "2 hours ago",
-      brandMentioned: true,
-      brands: ["YourBrand", "Asana"],
-      timestamp: "2:30 PM",
-    },
-    {
-      id: 2,
-      prompt: "Top CRM solutions for small business",
-      date: "5 hours ago",
-      brandMentioned: false,
-      brands: ["Salesforce", "HubSpot"],
-      timestamp: "11:15 AM",
-    },
-    {
-      id: 3,
-      prompt: "Marketing automation platforms comparison",
-      date: "1 day ago",
-      brandMentioned: true,
-      brands: ["YourBrand", "Mailchimp"],
-      timestamp: "Yesterday 3:45 PM",
-    },
-    {
-      id: 4,
-      prompt: "Enterprise software recommendations",
-      date: "2 days ago",
-      brandMentioned: false,
-      brands: ["Microsoft", "Oracle"],
-      timestamp: "Jan 11, 4:20 PM",
-    },
-  ]);
+  const [brandMetrics, setBrandMetrics] = useState<BrandMetric[]>([]);
+  const [promptHistory, setPromptHistory] = useState<PromptHistory[]>([]);
+  const [timeSeriesData, setTimeSeriesData] = useState<any[]>([]);
 
-  // Brand metrics data
-  const [brandMetrics] = useState<BrandMetric[]>([
-    { name: "YourBrand", mentions: 245, percentage: 35, trend: "up" },
-    { name: "Competitor A", mentions: 189, percentage: 27, trend: "down" },
-    { name: "Competitor B", mentions: 156, percentage: 22, trend: "stable" },
-    { name: "Competitor C", mentions: 112, percentage: 16, trend: "up" },
-  ]);
+  // const [promptHistory] = useState<PromptHistory[]>([
+  //   {
+  //     id: 1,
+  //     prompt: "Best project management tools for startups",
+  //     date: "2 hours ago",
+  //     brandMentioned: true,
+  //     brands: ["YourBrand", "Asana"],
+  //     timestamp: "2:30 PM",
+  //   },
+  //   {
+  //     id: 2,
+  //     prompt: "Top CRM solutions for small business",
+  //     date: "5 hours ago",
+  //     brandMentioned: false,
+  //     brands: ["Salesforce", "HubSpot"],
+  //     timestamp: "11:15 AM",
+  //   },
+  //   {
+  //     id: 3,
+  //     prompt: "Marketing automation platforms comparison",
+  //     date: "1 day ago",
+  //     brandMentioned: true,
+  //     brands: ["YourBrand", "Mailchimp"],
+  //     timestamp: "Yesterday 3:45 PM",
+  //   },
+  //   {
+  //     id: 4,
+  //     prompt: "Enterprise software recommendations",
+  //     date: "2 days ago",
+  //     brandMentioned: false,
+  //     brands: ["Microsoft", "Oracle"],
+  //     timestamp: "Jan 11, 4:20 PM",
+  //   },
+  // ]);
 
-  // Time series data for line chart
-  const [timeSeriesData] = useState([
-    { date: "Jan 7", yourBrand: 42, competitorA: 38, competitorB: 35 },
-    { date: "Jan 8", yourBrand: 45, competitorA: 40, competitorB: 33 },
-    { date: "Jan 9", yourBrand: 48, competitorA: 37, competitorB: 36 },
-    { date: "Jan 10", yourBrand: 51, competitorA: 39, competitorB: 34 },
-    { date: "Jan 11", yourBrand: 54, competitorA: 41, competitorB: 37 },
-    { date: "Jan 12", yourBrand: 59, competitorA: 43, competitorB: 38 },
-    { date: "Jan 13", yourBrand: 62, competitorA: 45, competitorB: 40 },
-  ]);
+  // // Brand metrics data
+  // const [brandMetrics] = useState<BrandMetric[]>([
+  //   { name: "YourBrand", mentions: 245, percentage: 35, trend: "up" },
+  //   { name: "Competitor A", mentions: 189, percentage: 27, trend: "down" },
+  //   { name: "Competitor B", mentions: 156, percentage: 22, trend: "stable" },
+  //   { name: "Competitor C", mentions: 112, percentage: 16, trend: "up" },
+  // ]);
+
+  // // Time series data for line chart
+  // const [timeSeriesData] = useState([
+  //   { date: "Jan 7", yourBrand: 42, competitorA: 38, competitorB: 35 },
+  //   { date: "Jan 8", yourBrand: 45, competitorA: 40, competitorB: 33 },
+  //   { date: "Jan 9", yourBrand: 48, competitorA: 37, competitorB: 36 },
+  //   { date: "Jan 10", yourBrand: 51, competitorA: 39, competitorB: 34 },
+  //   { date: "Jan 11", yourBrand: 54, competitorA: 41, competitorB: 37 },
+  //   { date: "Jan 12", yourBrand: 59, competitorA: 43, competitorB: 38 },
+  //   { date: "Jan 13", yourBrand: 62, competitorA: 45, competitorB: 40 },
+  // ]);
 
   // Left sidebar tabs
   const [leftTab, setLeftTab] = useState<"brands" | "history">("brands");
@@ -128,7 +136,10 @@ const AEOWorkspace: React.FC = () => {
   const [checksUsed, setChecksUsed] = useState(247);
   const [alertsActive, setAlertsActive] = useState(12);
   const checksRemaining = DAILY_CHECKS - checksUsed;
-  const checksPct = Math.min(100, Math.round((checksUsed / DAILY_CHECKS) * 100));
+  const checksPct = Math.min(
+    100,
+    Math.round((checksUsed / DAILY_CHECKS) * 100),
+  );
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -179,49 +190,130 @@ const AEOWorkspace: React.FC = () => {
     );
   };
 
+  const fetchAnalysis = async () => {
+    try {
+      const res = await axiosWithCsrf.get("/api/brand-workspace-analysis/");
+      const data = res.data;
+      setBrandMetrics(data.brandMetrics);
+      setPromptHistory(data.promptHistory);
+      setTimeSeriesData(data.timeSeriesData);
+    } catch (err: any) {
+      console.error("Error fetching analysis:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalysis();
+  }, []);
+
   // Autoscroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!message.trim()) return;
+  // const sendMessage = async () => {
+  //   if (!message.trim()) return;
 
-    const newMessage: Message = {
+  //   const newMessage: Message = {
+  //     id: Date.now(),
+  //     type: "user",
+  //     content: message,
+  //     timestamp: new Date(),
+  //   };
+  //   setMessages((prev) => [...prev, newMessage]);
+  //   setMessage("");
+
+  //   const typingId = Date.now() + 1;
+  //   const typingMessage: Message = {
+  //     id: typingId,
+  //     type: "ai",
+  //     content: "__thinking__",
+  //     timestamp: new Date(),
+  //   };
+  //   setMessages((prev) => [...prev, typingMessage]);
+  //   setIsThinking(true);
+
+  //   // Simulate AI response
+  //   setTimeout(() => {
+  //     const responses = [
+  //       "Your brand was mentioned in 8 out of 10 recent AI responses for this query type. Competitors A and B also appeared frequently.",
+  //       "Analysis complete: Your brand has 35% share of voice in this category. Trending upward compared to last week.",
+  //       "Found 12 new mentions of your brand in AI responses today. Your positioning is strongest in product comparison queries.",
+  //       "Brand visibility check: You're currently ranking in top 3 for 78% of relevant prompts. Competitor C is gaining ground.",
+  //     ];
+  //     const aiText = responses[Math.floor(Math.random() * responses.length)];
+
+  //     setMessages((prev) =>
+  //       prev.map((m) => (m.id === typingId ? { ...m, content: aiText } : m))
+  //     );
+  //     setIsThinking(false);
+  //     setChecksUsed((v) => Math.min(DAILY_CHECKS, v + 1));
+  //   }, 2000);
+  // };
+  const sendMessage = async () => {
+    if (!message.trim() || isThinking) return;
+
+    const userText = message;
+
+    const userMessage: Message = {
       id: Date.now(),
       type: "user",
-      content: message,
+      content: userText,
       timestamp: new Date(),
     };
-    setMessages((prev) => [...prev, newMessage]);
+
+    setMessages((prev) => [...prev, userMessage]);
     setMessage("");
 
-    const typingId = Date.now() + 1;
-    const typingMessage: Message = {
-      id: typingId,
-      type: "ai",
-      content: "__thinking__",
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, typingMessage]);
+    const thinkingId = Date.now() + 1;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: thinkingId,
+        type: "ai",
+        content: "__thinking__",
+        timestamp: new Date(),
+      },
+    ]);
+
     setIsThinking(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const responses = [
-        "Your brand was mentioned in 8 out of 10 recent AI responses for this query type. Competitors A and B also appeared frequently.",
-        "Analysis complete: Your brand has 35% share of voice in this category. Trending upward compared to last week.",
-        "Found 12 new mentions of your brand in AI responses today. Your positioning is strongest in product comparison queries.",
-        "Brand visibility check: You're currently ranking in top 3 for 78% of relevant prompts. Competitor C is gaining ground.",
-      ];
-      const aiText = responses[Math.floor(Math.random() * responses.length)];
+    try {
+      const res = await axiosWithCsrf.post("/api/aeo/chat/", {
+        prompt: userText,
+      });
+
+      const data = res.data;
+
+      const aiMessage: Message = {
+        id: thinkingId,
+        type: "ai",
+        content: data.answer,
+        timestamp: new Date(data.created_at),
+      };
 
       setMessages((prev) =>
-        prev.map((m) => (m.id === typingId ? { ...m, content: aiText } : m))
+        prev.map((m) => (m.id === thinkingId ? aiMessage : m)),
       );
-      setIsThinking(false);
+
+      // Update usage metrics
       setChecksUsed((v) => Math.min(DAILY_CHECKS, v + 1));
-    }, 2000);
+    } catch (err: any) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === thinkingId
+            ? {
+                ...m,
+                content:
+                  "Error: Unable to analyze brand mentions. Please try again.",
+              }
+            : m,
+        ),
+      );
+    } finally {
+      fetchAnalysis();
+      setIsThinking(false);
+    }
   };
 
   // Pie Chart Component
@@ -239,8 +331,10 @@ const AEOWorkspace: React.FC = () => {
             const angle = (percentage / 100) * 360;
             const x1 = 140 + 100 * Math.cos((currentAngle * Math.PI) / 180);
             const y1 = 140 + 100 * Math.sin((currentAngle * Math.PI) / 180);
-            const x2 = 140 + 100 * Math.cos(((currentAngle + angle) * Math.PI) / 180);
-            const y2 = 140 + 100 * Math.sin(((currentAngle + angle) * Math.PI) / 180);
+            const x2 =
+              140 + 100 * Math.cos(((currentAngle + angle) * Math.PI) / 180);
+            const y2 =
+              140 + 100 * Math.sin(((currentAngle + angle) * Math.PI) / 180);
             const largeArc = angle > 180 ? 1 : 0;
 
             const path = `M 140 140 L ${x1} ${y1} A 100 100 0 ${largeArc} 1 ${x2} ${y2} Z`;
@@ -256,10 +350,20 @@ const AEOWorkspace: React.FC = () => {
             );
           })}
           <circle cx="140" cy="140" r="60" fill="white" />
-          <text x="140" y="135" textAnchor="middle" className="text-2xl font-bold fill-slate-900">
+          <text
+            x="140"
+            y="135"
+            textAnchor="middle"
+            className="text-2xl font-bold fill-slate-900"
+          >
             {total}
           </text>
-          <text x="140" y="155" textAnchor="middle" className="text-xs fill-slate-600">
+          <text
+            x="140"
+            y="155"
+            textAnchor="middle"
+            className="text-xs fill-slate-600"
+          >
             Total Mentions
           </text>
         </svg>
@@ -297,7 +401,9 @@ const AEOWorkspace: React.FC = () => {
             <div key={idx} className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-medium">{brand.name}</span>
-                <span className="text-slate-600">{brand.mentions} mentions</span>
+                <span className="text-slate-600">
+                  {brand.mentions} mentions
+                </span>
               </div>
               <div className="h-8 bg-white/70 rounded-lg overflow-hidden ring-1 ring-white/60">
                 <div
@@ -317,108 +423,129 @@ const AEOWorkspace: React.FC = () => {
     );
   };
 
-  // Line Chart Component
-  const LineChartComponent: React.FC = () => {
-    const maxValue = Math.max(
-      ...timeSeriesData.flatMap((d) => [d.yourBrand, d.competitorA, d.competitorB])
-    );
-    const padding = 40;
-    const width = 500;
-    const height = 300;
-    const chartWidth = width - padding * 2;
-    const chartHeight = height - padding * 2;
+  // // Line Chart Component
+  // const LineChartComponent: React.FC = () => {
+  //   const maxValue = Math.max(
+  //     ...timeSeriesData.flatMap((d) => [
+  //       d.yourBrand,
+  //       d.competitorA,
+  //       d.competitorB,
+  //     ]),
+  //   );
+  //   const padding = 40;
+  //   const width = 500;
+  //   const height = 300;
+  //   const chartWidth = width - padding * 2;
+  //   const chartHeight = height - padding * 2;
 
-    const getX = (index: number) => padding + (index / (timeSeriesData.length - 1)) * chartWidth;
-    const getY = (value: number) => height - padding - (value / maxValue) * chartHeight;
+  //   const getX = (index: number) =>
+  //     padding + (index / (timeSeriesData.length - 1)) * chartWidth;
+  //   const getY = (value: number) =>
+  //     height - padding - (value / maxValue) * chartHeight;
 
-    const createPath = (dataKey: "yourBrand" | "competitorA" | "competitorB") => {
-      return timeSeriesData
-        .map((d, i) => `${i === 0 ? "M" : "L"} ${getX(i)} ${getY(d[dataKey])}`)
-        .join(" ");
-    };
+  //   const createPath = (key: string) => {
+  //     return timeSeriesData
+  //       .map((d, i) => `${i === 0 ? "M" : "L"} ${getX(i)} ${getY(d[key])}`)
+  //       .join(" ");
+  //   };
 
-    return (
-      <div className="flex flex-col p-10 w-full shadow items-center gap-4">
-        <svg width={width} height={height} className="overflow-visible">
-          {/* Grid lines */}
-          {[0, 1, 2, 3, 4].map((i) => {
-            const y = padding + (i / 4) * chartHeight;
-            return (
-              <line
-                key={i}
-                x1={padding}
-                y1={y}
-                x2={width - padding}
-                y2={y}
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-            );
-          })}
+  //   return (
+  //     <div className="flex flex-col p-10 w-full shadow items-center gap-4">
+  //       <svg width={width} height={height} className="overflow-visible">
+  //         {/* Grid lines */}
+  //         {[0, 1, 2, 3, 4].map((i) => {
+  //           const y = padding + (i / 4) * chartHeight;
+  //           return (
+  //             <line
+  //               key={i}
+  //               x1={padding}
+  //               y1={y}
+  //               x2={width - padding}
+  //               y2={y}
+  //               stroke="#e2e8f0"
+  //               strokeWidth="1"
+  //             />
+  //           );
+  //         })}
 
-          {/* Lines */}
-          <path
-            d={createPath("yourBrand")}
-            fill="none"
-            stroke="#6366f1"
-            strokeWidth="3"
-            className="transition-all duration-300"
-          />
-          <path
-            d={createPath("competitorA")}
-            fill="none"
-            stroke="#8b5cf6"
-            strokeWidth="3"
-            className="transition-all duration-300"
-          />
-          <path
-            d={createPath("competitorB")}
-            fill="none"
-            stroke="#06b6d4"
-            strokeWidth="3"
-            className="transition-all duration-300"
-          />
+  //         {/* Lines */}
+  //         <path
+  //           d={createPath("yourBrand")}
+  //           fill="none"
+  //           stroke="#6366f1"
+  //           strokeWidth="3"
+  //           className="transition-all duration-300"
+  //         />
+  //         <path
+  //           d={createPath("competitorA")}
+  //           fill="none"
+  //           stroke="#8b5cf6"
+  //           strokeWidth="3"
+  //           className="transition-all duration-300"
+  //         />
+  //         <path
+  //           d={createPath("competitorB")}
+  //           fill="none"
+  //           stroke="#06b6d4"
+  //           strokeWidth="3"
+  //           className="transition-all duration-300"
+  //         />
 
-          {/* Data points */}
-          {timeSeriesData.map((d, i) => (
-            <g key={i}>
-              <circle cx={getX(i)} cy={getY(d.yourBrand)} r="4" fill="#6366f1" />
-              <circle cx={getX(i)} cy={getY(d.competitorA)} r="4" fill="#8b5cf6" />
-              <circle cx={getX(i)} cy={getY(d.competitorB)} r="4" fill="#06b6d4" />
-            </g>
-          ))}
+  //         {/* Data points */}
+  //         {timeSeriesData.map((d, i) => (
+  //           <g key={i}>
+  //             <circle
+  //               cx={getX(i)}
+  //               cy={getY(d.yourBrand)}
+  //               r="4"
+  //               fill="#6366f1"
+  //             />
+  //             <circle
+  //               cx={getX(i)}
+  //               cy={getY(d.competitorA)}
+  //               r="4"
+  //               fill="#8b5cf6"
+  //             />
+  //             <circle
+  //               cx={getX(i)}
+  //               cy={getY(d.competitorB)}
+  //               r="4"
+  //               fill="#06b6d4"
+  //             />
+  //           </g>
+  //         ))}
 
-          {/* X-axis labels */}
-          {timeSeriesData.map((d, i) => (
-            <text
-              key={i}
-              x={getX(i)}
-              y={height - 10}
-              textAnchor="middle"
-              className="text-xs fill-slate-600"
-            >
-              {d.date}
-            </text>
-          ))}
-        </svg>
+  //         {/* X-axis labels */}
+  //         {timeSeriesData.map((d, i) => (
+  //           <text
+  //             key={i}
+  //             x={getX(i)}
+  //             y={height - 10}
+  //             textAnchor="middle"
+  //             className="text-xs fill-slate-600"
+  //           >
+  //             {d.date}
+  //           </text>
+  //         ))}
+  //       </svg>
 
-        <div className="flex gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-indigo-500" />
-            <span className="text-sm">YourBrand</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-violet-500" />
-            <span className="text-sm">Competitor A</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-sky-500" />
-            <span className="text-sm">Competitor B</span>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  //       <div className="flex gap-6">
+  //         <div className="flex items-center gap-2">
+  //           <div className="w-3 h-3 rounded-full bg-indigo-500" />
+  //           <span className="text-sm">YourBrand</span>
+  //         </div>
+  //         <div className="flex items-center gap-2">
+  //           <div className="w-3 h-3 rounded-full bg-violet-500" />
+  //           <span className="text-sm">Competitor A</span>
+  //         </div>
+  //         <div className="flex items-center gap-2">
+  //           <div className="w-3 h-3 rounded-full bg-sky-500" />
+  //           <span className="text-sm">Competitor B</span>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // };
 
   return (
     <div className="w-full h-screen overflow-x-hidden bg-gradient-to-br from-indigo-50 via-violet-50 to-sky-50 text-slate-900 flex flex-col">
@@ -427,29 +554,49 @@ const AEOWorkspace: React.FC = () => {
         <div className="px-4 py-1 flex items-center justify-between w-full">
           <div className="flex items-center py-2 gap-2">
             <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-indigo-500/40 via-violet-500/30 to-sky-500/40 ring-1 ring-white/60 shadow-[0_8px_30px_rgba(99,102,241,0.35)]" />
-            <span className="font-semibold tracking-tight mr-4">AEO Workspace</span>
+            <span className="font-semibold tracking-tight mr-4">
+              AEO Workspace
+            </span>
 
             {/* View toggles */}
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => setLayout((s) => ({ ...s, showLeft: !s.showLeft }))}
+                onClick={() =>
+                  setLayout((s) => ({ ...s, showLeft: !s.showLeft }))
+                }
                 className="rounded-xl px-3 py-1.5 bg-white/50 ring-1 ring-white/60 hover:bg-white/70 transition inline-flex items-center gap-2"
               >
-                {layout.showLeft ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                {layout.showLeft ? (
+                  <Eye className="h-4 w-4" />
+                ) : (
+                  <EyeOff className="h-4 w-4" />
+                )}
                 Sidebar
               </button>
               <button
-                onClick={() => setLayout((s) => ({ ...s, showCanvas: !s.showCanvas }))}
+                onClick={() =>
+                  setLayout((s) => ({ ...s, showCanvas: !s.showCanvas }))
+                }
                 className="rounded-xl px-3 py-1.5 bg-white/50 ring-1 ring-white/60 hover:bg-white/70 transition inline-flex items-center gap-2"
               >
-                {layout.showCanvas ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                {layout.showCanvas ? (
+                  <Eye className="h-4 w-4" />
+                ) : (
+                  <EyeOff className="h-4 w-4" />
+                )}
                 Analytics
               </button>
               <button
-                onClick={() => setLayout((s) => ({ ...s, showRight: !s.showRight }))}
+                onClick={() =>
+                  setLayout((s) => ({ ...s, showRight: !s.showRight }))
+                }
                 className="rounded-xl px-3 py-1.5 bg-white/50 ring-1 ring-white/60 hover:bg-white/70 transition inline-flex items-center gap-2"
               >
-                {layout.showRight ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                {layout.showRight ? (
+                  <Eye className="h-4 w-4" />
+                ) : (
+                  <EyeOff className="h-4 w-4" />
+                )}
                 Monitor
               </button>
             </div>
@@ -463,20 +610,23 @@ const AEOWorkspace: React.FC = () => {
             >
               <RotateCcw className="h-4 w-4" /> Reset
             </button>
-            
+
             <button
-            onClick={()=> router.push("/")}
+              onClick={() => router.push("/")}
               className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-700 bg-white/60 ring-1 ring-white/60 hover:bg-white/80 transition"
               title="back"
             >
-             Back <ArrowRight className="h-5 w-5"/>
+              Back <ArrowRight className="h-5 w-5" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Body */}
-      <div id="layout-root" className="flex flex-1 overflow-hidden w-full px-3 py-3 gap-3">
+      <div
+        id="layout-root"
+        className="flex flex-1 overflow-hidden w-full px-3 py-3 gap-3"
+      >
         {/* Left Sidebar */}
         {layout.showLeft && (
           <div
@@ -497,7 +647,9 @@ const AEOWorkspace: React.FC = () => {
               <div className="space-y-2">
                 <div>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="font-medium text-slate-700">Daily Checks</span>
+                    <span className="font-medium text-slate-700">
+                      Daily Checks
+                    </span>
                     <span className="text-slate-600">
                       {checksUsed} / {DAILY_CHECKS}
                     </span>
@@ -511,11 +663,15 @@ const AEOWorkspace: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-3">
                   <div className="p-2 rounded-lg bg-white/70 ring-1 ring-white/60">
-                    <div className="text-2xl font-bold text-indigo-600">{checksRemaining}</div>
+                    <div className="text-2xl font-bold text-indigo-600">
+                      {checksRemaining}
+                    </div>
                     <div className="text-xs text-slate-600">Remaining</div>
                   </div>
                   <div className="p-2 rounded-lg bg-white/70 ring-1 ring-white/60">
-                    <div className="text-2xl font-bold text-violet-600">{alertsActive}</div>
+                    <div className="text-2xl font-bold text-violet-600">
+                      {alertsActive}
+                    </div>
                     <div className="text-xs text-slate-600">Active Alerts</div>
                   </div>
                 </div>
@@ -562,13 +718,15 @@ const AEOWorkspace: React.FC = () => {
                             brand.trend === "up"
                               ? "text-green-600"
                               : brand.trend === "down"
-                              ? "text-rose-600"
-                              : "text-slate-600"
+                                ? "text-rose-600"
+                                : "text-slate-600"
                           }`}
                         />
                       </div>
                       <div className="flex items-center justify-between mt-1">
-                        <p className="text-xs text-slate-600">{brand.mentions} mentions</p>
+                        <p className="text-xs text-slate-600">
+                          {brand.mentions} mentions
+                        </p>
                         <span className="text-xs font-semibold text-indigo-600">
                           {brand.percentage}%
                         </span>
@@ -584,7 +742,9 @@ const AEOWorkspace: React.FC = () => {
                       className="p-3 rounded-xl transition cursor-pointer bg-white/60 ring-1 ring-white/60 hover:bg-white/80"
                     >
                       <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-medium text-sm line-clamp-2">{item.prompt}</h3>
+                        <h3 className="font-medium text-sm line-clamp-2">
+                          {item.prompt}
+                        </h3>
                         {item.brandMentioned ? (
                           <CheckCircle className="h-4 w-4 text-green-600 shrink-0 ml-2" />
                         ) : (
@@ -696,7 +856,9 @@ const AEOWorkspace: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
               {activeChart === "pie" && <PieChart2 />}
               {activeChart === "bar" && <BarChart />}
-              {activeChart === "line" && <LineChartComponent />}
+              {activeChart === "line" && (
+                <LineChartComponent timeSeriesData={timeSeriesData} />
+              )}
             </div>
 
             {/* Insights Panel */}
@@ -781,7 +943,11 @@ const AEOWorkspace: React.FC = () => {
                           <ThinkingDots />
                         ) : (
                           <>
-                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                            <p className="whitespace-pre-wrap">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {String(msg.content)}
+                              </ReactMarkdown>
+                            </p>
                             <p className="text-xs opacity-60 mt-1">
                               {msg.timestamp.toLocaleTimeString()}
                             </p>
