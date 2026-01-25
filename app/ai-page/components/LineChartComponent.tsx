@@ -3,7 +3,7 @@ import React from "react";
 
 interface TimeSeriesData {
   date: string;
-  [key: string]: number | string;
+  [key: number | string]: number | string;
 }
 
 interface Props {
@@ -39,9 +39,9 @@ const LineChartComponent: React.FC<Props> = ({ timeSeriesData }) => {
     height - padding - (Number(value) / maxValue) * chartHeight;
 
   // Generate SVG path for a brand
-  const createPath = (key: string) =>
+  const createPath = (key:string) =>
     timeSeriesData
-      .map((d, i) => `${i === 0 ? "M" : "L"} ${getX(i)} ${getY(d[key])}`)
+      .map((d, i) => `${i === 0 ? "M" : "L"} ${getX(i)} ${getY(Number(d[key]))}`)
       .join(" ");
 
   return (
@@ -82,7 +82,7 @@ const LineChartComponent: React.FC<Props> = ({ timeSeriesData }) => {
               <circle
                 key={key}
                 cx={getX(i)}
-                cy={getY(d[key])}
+                cy={getY(Number(d[key]))}
                 r={4}
                 fill={colors[idx % colors.length]}
               />
